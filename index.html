@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priest Modeny & Techy | Admin Ready</title>
+    <title>Priest Modeny & Techy | Admin Secured</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -25,6 +25,9 @@
             background-color: rgba(0, 0, 0, 0.7);
             z-index: 999;
         }
+        .instagram-gradient {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+        }
     </style>
     <script>
         tailwind.config = {
@@ -33,6 +36,8 @@
                     colors: {
                         'primary': '#1e3a8a', /* Deep Blue / Navy */
                         'accent': '#facc15', /* Gold / Yellow */
+                        'whatsapp': '#25D366',
+                        'email': '#EA4335',
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
@@ -50,6 +55,12 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, setDoc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Configuration (YOUR CORRECT INFORMATION IS HERE) ---
+        const ADMIN_PASSWORD = "Apollo3023"; // The required access password
+        const CONTACT_EMAIL = "nemutambwenoble38@gmail.com";
+        const CONTACT_WHATSAPP = "27692459852"; // Stored without '+' for API link construction
+        const INSTAGRAM_LINK = "https://www.instagram.com/b.i.g_priest?igsh=MWJydWV2dXN6am8wMg==";
+
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -57,9 +68,27 @@
 
         let app, db, auth, userId = null;
 
+        // Function to update static contact details in the footer
+        function updateFooterContactDetails() {
+            const emailElement = document.getElementById('footer-email');
+            const whatsappElement = document.getElementById('footer-whatsapp');
+
+            if (emailElement) {
+                emailElement.textContent = CONTACT_EMAIL;
+            }
+            if (whatsappElement) {
+                // Ensure the '+' sign is displayed for the number
+                whatsappElement.textContent = `+${CONTACT_WHATSAPP}`;
+            }
+        }
+
+
         // Initialize Firebase and Authentication
         async function initializeAppAndAuth() {
             try {
+                // IMPORTANT: Update footer immediately so details are shown even if Firebase fails
+                updateFooterContactDetails();
+
                 if (!firebaseConfig) {
                     console.error("Firebase config not available. Running in local simulation mode.");
                     return;
@@ -71,7 +100,6 @@
                 
                 setLogLevel('Debug'); 
 
-                const adminPanel = document.getElementById('admin-panel-toggle');
                 const adminUserIdDisplay = document.getElementById('admin-user-id');
 
                 // Robust Authentication Setup
@@ -84,20 +112,14 @@
                 // Authentication is now complete. Set the user ID.
                 userId = auth.currentUser?.uid || crypto.randomUUID();
                 adminUserIdDisplay.textContent = `User ID: ${userId}`;
+                adminUserIdDisplay.textContent += initialAuthToken ? ' (Authenticated)' : ' (Anonymous)';
 
-                // Admin check updated to show button for any authenticated user
-                if (initialAuthToken) { 
-                    adminPanel.classList.remove('hidden');
-                    adminUserIdDisplay.textContent += ' (Authenticated Admin)';
-                } else {
-                    adminUserIdDisplay.textContent += ' (Anonymous)';
-                }
-                
                 // Seed and Listener Setup
                 await seedInitialProducts(); 
                 setupProductListeners();
                 setupAdminForm();
-                setupContactButtonDelegation(); // Initialize contact button listeners
+                setupContactButtonDelegation(); 
+                setupConnectModal(); 
 
             } catch (error) {
                 console.error("Error during Firebase initialization or authentication:", error);
@@ -128,7 +150,7 @@
                             price: 1299.00,
                             description: 'Unrivaled processing power and camera optics.',
                             imageUrl: 'https://placehold.co/400x400/1e3a8a/ffffff?text=Titan+X+Pro',
-                            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Placeholder video URL
+                            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 
                             createdAt: Date.now() - 10000
                         },
                         {
@@ -180,7 +202,6 @@
                     }
                 });
                 
-                // If no products, display a message
                 if (phonesContainer.innerHTML === '') {
                     phonesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No phones currently listed. Use Admin Mode to add one!</p>';
                 }
@@ -199,11 +220,9 @@
             if (!db) return console.error("Database not initialized.");
             
             try {
-                // In a real app, this would be secured by Firestore rules
                 await addDoc(collection(db, productsCollectionPath), productData); 
                 console.log("Product added successfully:", productData.name);
                 
-                // Close modal and show success (using a simple visual change instead of alert)
                 const modal = document.getElementById('admin-modal');
                 modal.classList.add('hidden');
                 document.getElementById('modal-message').textContent = `${productData.name} added!`;
@@ -211,10 +230,9 @@
                 document.getElementById('modal-message').classList.add('bg-green-100', 'text-green-700');
                 setTimeout(() => document.getElementById('modal-message').classList.add('hidden'), 3000);
                 
-                // Reset form fields
                 document.getElementById('product-form').reset();
                 document.getElementById('productImage').value = ''; 
-                document.getElementById('productImageFile').value = ''; // Clear file input visual
+                document.getElementById('productImageFile').value = ''; 
             } catch (e) {
                 console.error("Error adding document: ", e);
                 document.getElementById('modal-message').textContent = `Error adding product: ${e.message}`;
@@ -226,11 +244,9 @@
         // --- DOM Rendering Functions ---
 
         function createProductCard(product) {
-            // Uses Gold for accent in shoes and Navy for phones
             const buttonColor = product.category === 'phone' ? 'bg-primary hover:bg-blue-700' : 'bg-accent text-gray-900 hover:bg-yellow-500';
             const priceColor = product.category === 'phone' ? 'text-primary' : 'text-primary';
 
-            // Check if a video URL exists and is valid
             const videoLinkHtml = product.videoUrl ? 
                 `<a href="${product.videoUrl}" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-500 mb-2 flex items-center hover:text-red-600 transition duration-150">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M21 4H3a1 1 0 00-1 1v14a1 1 0 001 1h18a1 1 0 001-1V5a1 1 0 00-1-1zm-1 14H4V6h16v12zm-8-3l4-3-4-3v6z"/></svg> 
@@ -240,14 +256,12 @@
             return `
                 <!-- Product Card: ${product.name} -->
                 <div class="product-card bg-white p-6 rounded-xl shadow-lg border border-gray-100 flex flex-col items-center">
-                    <!-- Video Indicator: Now a clickable link -->
                     ${videoLinkHtml}
                     <img src="${product.imageUrl || 'https://placehold.co/400x400/94a3b8/ffffff?text=Image+Missing'}" alt="${product.name}" class="w-full h-auto rounded-lg mb-4 object-cover aspect-square">
                     <h3 class="text-xl font-bold text-gray-900 mb-2">${product.name}</h3>
                     <p class="text-sm text-gray-500 text-center mb-4 flex-grow">${product.description}</p>
                     <div class="flex justify-between items-center w-full mt-4">
                         <span class="text-2xl font-black ${priceColor}">$${product.price.toFixed(2)}</span>
-                        <!-- Updated button to trigger contact modal -->
                         <button 
                             class="contact-button ${buttonColor} text-white text-sm font-semibold py-2 px-4 rounded-full transition"
                             data-product-name="${product.name}"
@@ -267,28 +281,24 @@
             const hiddenImageInput = document.getElementById('productImage');
             const modalMessage = document.getElementById('modal-message');
             
-            // 1. Listen for file selection and convert to Base64 Data URL
+            // 1. Image File to Base64 Conversion
             fileInput.addEventListener('change', () => {
-                hiddenImageInput.value = ''; // Reset hidden value
-                modalMessage.classList.add('hidden'); // Clear previous warnings
+                hiddenImageInput.value = ''; 
+                modalMessage.classList.add('hidden'); 
 
                 if (fileInput.files && fileInput.files[0]) {
                     const file = fileInput.files[0];
                     
-                    // Display size warning if too large (critical for base64 storage)
-                    if (file.size > 500 * 1024) { // Warning limit set lower at 500KB
+                    if (file.size > 500 * 1024) { 
                         modalMessage.textContent = 'Warning: Image is larger than 500KB. This may affect app performance. Saving as Base64 data.';
                         modalMessage.classList.remove('hidden', 'bg-green-100', 'text-green-700');
                         modalMessage.classList.add('bg-red-100', 'text-red-700');
-                        // Continue to read the file, but warn the user.
                     }
                     
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        // Store Base64 data in the hidden input field
                         hiddenImageInput.value = e.target.result;
                     };
-                    // Read file as Base64 data URL
                     reader.readAsDataURL(file);
                 }
             });
@@ -300,7 +310,6 @@
                 
                 let imageSource = hiddenImageInput.value;
                 
-                // If no file was selected, use the default placeholder logic
                 if (!imageSource) {
                     imageSource = `https://placehold.co/400x400/${form.productCategory.value === 'phone' ? '1e3a8a' : 'facc15'}/ffffff?text=${form.productName.value.replace(/\s/g, '+')}`;
                 }
@@ -310,13 +319,11 @@
                     category: form.productCategory.value,
                     price: parseFloat(form.productPrice.value),
                     description: form.productDescription.value,
-                    // Video URL MUST be an external link, not a file upload
                     videoUrl: form.productVideo.value || null, 
-                    imageUrl: imageSource, // Holds Base64 data or a placeholder URL
+                    imageUrl: imageSource, 
                     createdAt: Date.now()
                 };
 
-                // Basic validation
                 if (isNaN(data.price) || data.name.trim() === '') {
                     modalMessage.textContent = 'Please check name and price fields.';
                     modalMessage.classList.remove('hidden', 'bg-green-100', 'text-green-700');
@@ -328,34 +335,62 @@
             });
         }
         
-        // Modal toggling
+        // --- Password and Modal Logic ---
+
+        // Open Password Modal
         document.getElementById('admin-panel-toggle').addEventListener('click', () => {
-            document.getElementById('admin-modal').classList.remove('hidden');
+            document.getElementById('password-modal').classList.remove('hidden');
         });
+
+        // Close Password Modal
+        document.getElementById('close-password-modal').addEventListener('click', () => {
+            document.getElementById('password-modal').classList.add('hidden');
+            document.getElementById('password-error').classList.add('hidden');
+            document.getElementById('adminPassword').value = '';
+        });
+
+        // Password Form Submission Check
+        document.getElementById('password-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const enteredPassword = document.getElementById('adminPassword').value;
+            const errorDisplay = document.getElementById('password-error');
+            
+            if (enteredPassword === ADMIN_PASSWORD) {
+                errorDisplay.classList.add('hidden');
+                document.getElementById('password-modal').classList.add('hidden'); // Close password modal
+                document.getElementById('admin-modal').classList.remove('hidden'); // Open product form modal
+                document.getElementById('adminPassword').value = ''; 
+            } else {
+                errorDisplay.classList.remove('hidden');
+            }
+        });
+
+
+        // Close Admin Product Form Modal
         document.getElementById('close-modal').addEventListener('click', () => {
             document.getElementById('admin-modal').classList.add('hidden');
+            // Cleanup state
             document.getElementById('product-form').reset();
             document.getElementById('productImage').value = ''; 
             document.getElementById('productImageFile').value = '';
             document.getElementById('modal-message').classList.add('hidden'); 
         });
 
-        // --- Customer Contact Modal Logic ---
+        // --- Customer Contact Modal Logic (Product Specific) ---
 
         function openContactModal(productName) {
             const modal = document.getElementById('contact-modal');
             document.getElementById('contact-product-name').textContent = productName;
             
-            // Set up links with pre-filled content
             const emailSubject = `Inquiry about ${productName}`;
             const emailBody = `Hello, I am interested in purchasing the ${productName} product advertised on your site. Can you please provide more information?`;
             
-            // mailto: link for Email
-            document.getElementById('email-link').href = `mailto:sales@pmandtechy.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            // mailto: link for Email 
+            document.getElementById('email-link').href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
             
-            // WhatsApp link (using a placeholder number)
+            // WhatsApp link 
             const whatsappMessage = `Hi, I'd like to know more about the ${productName}.`;
-            document.getElementById('whatsapp-link').href = `https://wa.me/15551234567?text=${encodeURIComponent(whatsappMessage)}`;
+            document.getElementById('whatsapp-link').href = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`;
             
             modal.classList.remove('hidden');
         }
@@ -364,7 +399,6 @@
             document.getElementById('contact-modal').classList.add('hidden');
         });
 
-        // Event delegation for the new 'Contact to Buy' buttons
         function setupContactButtonDelegation() {
             document.addEventListener('click', (e) => {
                 if (e.target && e.target.classList.contains('contact-button')) {
@@ -373,6 +407,35 @@
                 }
             });
         }
+        
+        // --- General Connect Modal Logic ---
+        
+        function setupConnectModal() {
+            const desktopToggle = document.getElementById('connect-panel-toggle');
+            const mobileToggle = document.getElementById('connect-panel-toggle-mobile');
+            const connectModal = document.getElementById('general-connect-modal');
+
+            const openModal = () => connectModal.classList.remove('hidden');
+
+            // 1. Setup Toggle Listeners
+            if (desktopToggle) {
+                desktopToggle.addEventListener('click', openModal);
+            }
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', openModal);
+            }
+
+            // 2. Setup Close Listener
+            document.getElementById('close-general-connect-modal').addEventListener('click', () => {
+                connectModal.classList.add('hidden');
+            });
+
+            // 3. Setup Link URLs (Ensuring correct contact info is used here)
+            document.getElementById('general-whatsapp-link').href = `https://wa.me/${CONTACT_WHATSAPP}?text=Hello%2C%20I%20saw%20your%20website%20and%20wanted%20to%20chat!`;
+            document.getElementById('general-email-link').href = `mailto:${CONTACT_EMAIL}?subject=General%20Inquiry%20from%20Website`;
+            document.getElementById('general-instagram-link').href = INSTAGRAM_LINK;
+        }
+
 
         // Start the application
         initializeAppAndAuth();
@@ -389,17 +452,53 @@
                 <span class="ml-2 text-primary">Techy</span>
             </a>
 
-            <!-- Admin Panel Toggle (Initially Hidden) -->
-            <div class="flex items-center space-x-4">
-                <p id="admin-user-id" class="text-xs text-gray-500"></p>
-                <button id="admin-panel-toggle" class="hidden bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-300">
+            <!-- Admin Panel Toggle and Connect Button -->
+            <div class="flex items-center space-x-3 sm:space-x-4">
+                <p id="admin-user-id" class="text-xs text-gray-500 hidden sm:block"></p>
+                
+                <!-- Connect Button (Desktop) -->
+                <button id="connect-panel-toggle" class="bg-whatsapp text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-600 transition duration-300 hidden sm:inline-block">
+                    Connect
+                </button>
+                <!-- Connect Button (Mobile) -->
+                <button id="connect-panel-toggle-mobile" class="bg-whatsapp text-white p-2 rounded-lg sm:hidden">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                </button>
+
+
+                <!-- Admin Button -->
+                <button id="admin-panel-toggle" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-300">
                     + Admin Mode
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Admin Product Modal (Hidden by default) -->
+    <!-- Admin Password Modal (Hidden by default) -->
+    <div id="password-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-primary">Admin Access Required</h3>
+                <button id="close-password-modal" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
+            </div>
+            
+            <form id="password-form" class="space-y-4">
+                <p class="text-sm text-gray-600">Enter the administrator password to proceed.</p>
+                <div>
+                    <label for="adminPassword" class="sr-only">Password</label>
+                    <input type="password" id="adminPassword" name="adminPassword" required placeholder="Enter Password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-primary focus:ring-primary">
+                </div>
+                <p id="password-error" class="text-sm text-center text-red-500 font-semibold hidden p-1 bg-red-50 rounded-lg">Incorrect password. Access denied.</p>
+
+                <button type="submit" class="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-300">
+                    Submit
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Admin Product Form Modal (Hidden by default - Opens after successful password entry) -->
     <div id="admin-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-lg">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
@@ -449,7 +548,6 @@
                     <input type="url" id="productVideo" name="productVideo" placeholder="e.g., https://youtube.com/watch?v=xyz" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
                     <p class="text-xs text-gray-500 mt-1 text-red-500 font-semibold">NOTE: Direct video file uploads are not supported due to database size limits (1MB).</p>
                 </div>
-                <!-- END VIDEO FIELD -->
 
                 <button type="submit" class="w-full bg-accent text-gray-900 font-bold py-3 rounded-lg hover:bg-yellow-500 transition duration-300">
                     Save New Item
@@ -458,7 +556,7 @@
         </div>
     </div>
 
-    <!-- Customer Contact Modal (Hidden by default) -->
+    <!-- Product Specific Customer Contact Modal (Hidden by default) -->
     <div id="contact-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
@@ -468,25 +566,64 @@
             <p class="text-gray-600 mb-6 text-center">How would you like to reach our sales team?</p>
 
             <div class="space-y-4">
-                <a id="whatsapp-link" target="_blank" class="flex items-center justify-center space-x-3 bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300">
+                <a id="whatsapp-link" target="_blank" class="flex items-center justify-center space-x-3 bg-whatsapp text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300">
                     <!-- WhatsApp Icon (Inline SVG) -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.55 0-10.04 4.5-10.04 10.04s4.5 10.04 10.04 10.04h.04c1.61 0 3.1-.38 4.45-1.11l3.52 1.14-1.15-3.4c.78-1.35 1.2-2.91 1.2-4.54 0-5.55-4.48-10.04-10.04-10.04zm.02 1.8c4.66 0 8.46 3.79 8.46 8.46 0 1.45-.37 2.8-1.01 4.02l-.3.57 1.15 3.33-3.41-1.11-.53-.29c-1.16.63-2.52.98-3.96.98-4.66 0-8.46-3.79-8.46-8.46s3.79-8.46 8.46-8.46zm-2.54 2.87c.18 0 .37 0 .55.02s.53.07.72.13c.2.06.43.16.68.32.25.16.47.4.67.72.21.32.33.72.45 1.27.11.55.08 1.09-.08 1.63-.16.54-.45 1.03-.86 1.48-.41.45-.94.75-1.57.92-.64.17-1.32.22-2.0.18-.68-.04-1.3-.23-1.85-.56-.55-.33-.99-.8-1.34-1.39-.35-.59-.56-1.3-.58-2.02-.02-.72.2-1.39.67-1.92.47-.53 1.11-.84 1.83-.93.72-.09 1.41.02 2.07.35z"/></svg>
-                    <span>Chat on WhatsApp</span>
+                    <span>Chat on WhatsApp (recommended)</span>
                 </a>
-                <a id="email-link" class="flex items-center justify-center space-x-3 bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+                <a id="email-link" target="_blank" class="flex items-center justify-center space-x-3 bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
                     <!-- Email Icon (Inline SVG) -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M2.003 5.884L10 9.882l-8 4v-8.001zm0 12.112l8-4v8.001l-8-4.001zm20-12.111v12.002l-8-4.001 8-4.001zm-10 4l-10-5h20l-10 5z"/></svg>
                     <span>Send an Email</span>
                 </a>
             </div>
-            <p class="text-xs text-center text-gray-400 mt-4">We aim to respond within 1 business hour. (Example contact details: sales@pmandtechy.com / +1-555-123-4567)</p>
+            <!-- Displaying the actual contact information here for transparency -->
+            <p class="text-xs text-center text-gray-400 mt-4">We aim to respond within 1 business hour. Contact: <span id="contact-modal-email-preview">${CONTACT_EMAIL}</span> / +<span id="contact-modal-whatsapp-preview">${CONTACT_WHATSAPP}</span></p>
+        </div>
+    </div>
+    
+    <!-- General Connect Modal (Hidden by default - Accessed via "Connect" button) -->
+    <div id="general-connect-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-primary">Connect with B.I.G_Priest</h3>
+                <button id="close-general-connect-modal" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
+            </div>
+            
+            <p class="text-gray-600 mb-6 text-center">Follow us or get in touch immediately.</p>
+
+            <div class="space-y-4">
+                <!-- Instagram Link -->
+                <a id="general-instagram-link" target="_blank" class="flex items-center justify-center space-x-3 instagram-gradient text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 transition duration-300">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.8 2c-2.458 0-4.7 2.1-4.7 4.7v8.6c0 2.583 2.242 4.7 4.7 4.7h8.6c2.458 0 4.7-2.117 4.7-4.7V6.7c0-2.583-2.242-4.7-4.7-4.7H7.8zm11.7 4.7v8.6c0 1.9-1.6 3.5-3.5 3.5H7.8c-1.9 0-3.5-1.617-3.5-3.5V6.7c0-1.9 1.6-3.5 3.5-3.5h8.6c1.9 0 3.5 1.617 3.5 3.5zm-5.35 1.9A4.7 4.7 0 1014.7 12a4.7 4.7 0 00-2.55-4.7zm0 7.8A3.1 3.1 0 1114.7 12a3.1 3.1 0 01-2.55 3.1zm4.7-7.8a1.175 1.175 0 10-2.35 0 1.175 1.175 0 002.35 0z"/></svg>
+                    <span>Follow on Instagram</span>
+                </a>
+                
+                <!-- WhatsApp Link -->
+                <a id="general-whatsapp-link" target="_blank" class="flex items-center justify-center space-x-3 bg-whatsapp text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.55 0-10.04 4.5-10.04 10.04s4.5 10.04 10.04 10.04h.04c1.61 0 3.1-.38 4.45-1.11l3.52 1.14-1.15-3.4c.78-1.35 1.2-2.91 1.2-4.54 0-5.55-4.48-10.04-10.04-10.04zm.02 1.8c4.66 0 8.46 3.79 8.46 8.46 0 1.45-.37 2.8-1.01 4.02l-.3.57 1.15 3.33-3.41-1.11-.53-.29c-1.16.63-2.52.98-3.96.98-4.66 0-8.46-3.79-8.46-8.46s3.79-8.46 8.46-8.46zm-2.54 2.87c.18 0 .37 0 .55.02s.53.07.72.13c.2.06.43.16.68.32.25.16.47.4.67.72.21.32.33.72.45 1.27.11.55.08 1.09-.08 1.63-.16.54-.45 1.03-.86 1.48-.41.45-.94.75-1.57.92-.64.17-1.32.22-2.0.18-.68-.04-1.3-.23-1.85-.56-.55-.33-.99-.8-1.34-1.39-.35-.59-.56-1.3-.58-2.02-.02-.72.2-1.39.67-1.92.47-.53 1.11-.84 1.83-.93.72-.09 1.41.02 2.07.35z"/></svg>
+                    <span>WhatsApp: +${CONTACT_WHATSAPP}</span>
+                </a>
+                
+                <!-- Email Link -->
+                <a id="general-email-link" target="_blank" class="flex items-center justify-center space-x-3 bg-email text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    <span>Email: ${CONTACT_EMAIL}</span>
+                </a>
+            </div>
         </div>
     </div>
 
 
     <!-- Hero Section -->
     <section class="bg-primary pt-16 pb-24 text-white text-center shadow-2xl">
-        <div class="max-w-4xl mx-auto px-4">
+        <div class="max-w-7xl mx-auto px-4">
+            
+            <!-- Hero Image: Sleek Tech and Footwear -->
+            <div class="mb-10 max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-2xl">
+                
+            </div>
+
             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black mb-4">
                 <span class="text-accent block">Priest Modeny & Techy</span>
                 Where Style Meets Performance.
@@ -605,12 +742,12 @@
                     </ul>
                 </div>
 
-                <!-- Column 4: Contact -->
+                <!-- Column 4: Contact (Now uses IDs for JavaScript injection) -->
                 <div>
                     <h4 class="text-lg font-semibold mb-4 text-white">Get in Touch</h4>
                     <p class="text-sm text-gray-400">
-                        Email: support@pmandtechy.com<br>
-                        Phone: (555) MODENY-1<br>
+                        Email: <span id="footer-email">Loading...</span><br>
+                        WhatsApp: <span id="footer-whatsapp">Loading...</span><br>
                         Follow Us: @PMandTechy
                     </p>
                 </div>
