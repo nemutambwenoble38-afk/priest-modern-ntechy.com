@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priest Modeny & Techy | Admin Secured</title>
+    <title>Priest Modeny & Techy | Static Display</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -49,200 +49,84 @@
 </head>
 <body class="bg-gray-50 text-gray-800">
 
-    <!-- Firebase SDK Imports (Required for Database) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, setDoc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    <!-- STATIC JAVASCRIPT LOGIC -->
+    <script>
         // --- Configuration (YOUR CORRECT INFORMATION IS HERE) ---
-        const ADMIN_PASSWORD = "Apollo3023"; // The required access password
         const CONTACT_EMAIL = "nemutambwenoble38@gmail.com";
-        const CONTACT_WHATSAPP = "27692459852"; // Stored without '+' for API link construction
+        const CONTACT_WHATSAPP = "27692459852";
         const INSTAGRAM_LINK = "https://www.instagram.com/b.i.g_priest?igsh=MWJydWV2dXN6am8wMg==";
-
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        let app, db, auth, userId = null;
-
-        // Function to update static contact details in the footer
-        function updateFooterContactDetails() {
-            const emailElement = document.getElementById('footer-email');
-            const whatsappElement = document.getElementById('footer-whatsapp');
-
-            if (emailElement) {
-                emailElement.textContent = CONTACT_EMAIL;
-            }
-            if (whatsappElement) {
-                // Ensure the '+' sign is displayed for the number
-                whatsappElement.textContent = `+${CONTACT_WHATSAPP}`;
-            }
-        }
-
-
-        // Initialize Firebase and Authentication
-        async function initializeAppAndAuth() {
-            try {
-                // IMPORTANT: Update footer immediately so details are shown even if Firebase fails
-                updateFooterContactDetails();
-
-                if (!firebaseConfig) {
-                    console.error("Firebase config not available. Running in local simulation mode.");
-                    return;
-                }
-                
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                setLogLevel('Debug'); 
-
-                const adminUserIdDisplay = document.getElementById('admin-user-id');
-
-                // Robust Authentication Setup
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                // Authentication is now complete. Set the user ID.
-                userId = auth.currentUser?.uid || crypto.randomUUID();
-                adminUserIdDisplay.textContent = `User ID: ${userId}`;
-                adminUserIdDisplay.textContent += initialAuthToken ? ' (Authenticated)' : ' (Anonymous)';
-
-                // Seed and Listener Setup
-                await seedInitialProducts(); 
-                setupProductListeners();
-                setupAdminForm();
-                setupContactButtonDelegation(); 
-                setupConnectModal(); 
-
-            } catch (error) {
-                console.error("Error during Firebase initialization or authentication:", error);
-                document.getElementById('admin-user-id').textContent = `Auth Failed: ${error.message}`;
-            }
-        }
+        const ADMIN_PASSWORD = "Apollo3023"; 
         
-        // --- Database Logic ---
-        
-        const productsCollectionPath = `artifacts/${appId}/public/data/products`;
-
-        // Function to seed initial products if the collection is empty
-        async function seedInitialProducts() {
-            if (!db) return;
-            const productsRef = collection(db, productsCollectionPath);
-            
-            try {
-                const snapshot = await getDocs(productsRef); 
-                
-                if (snapshot.empty) {
-                    console.log("Database is empty. Seeding initial products.");
-                    
-                    const initialProducts = [
-                        {
-                            id: 'titan-x-pro',
-                            name: 'Titan X Pro',
-                            category: 'phone',
-                            price: 1299.00,
-                            description: 'Unrivaled processing power and camera optics.',
-                            imageUrl: 'https://placehold.co/400x400/1e3a8a/ffffff?text=Titan+X+Pro',
-                            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 
-                            createdAt: Date.now() - 10000
-                        },
-                        {
-                            id: 'modeny-lifestyle',
-                            name: 'Modeny Lifestyle',
-                            category: 'shoe',
-                            price: 180.00,
-                            description: 'Hand-stitched leather for sophisticated comfort.',
-                            imageUrl: 'https://placehold.co/400x400/facc15/1e3a8a?text=Modeny+Lifestyle',
-                            videoUrl: null,
-                            createdAt: Date.now() - 5000
-                        }
-                    ];
-                    
-                    for (const product of initialProducts) {
-                        await setDoc(doc(db, productsCollectionPath, product.id), product);
-                    }
-                    console.log("Initial products seeded.");
-                } else {
-                    console.log("Database already contains products. Skipping seed.");
-                }
-            } catch (e) {
-                console.warn("Could not check if database is empty (Possible permission error on read check, but proceeding):", e.message);
+        // --- Static Product Data (Used for GitHub Pages) ---
+        const staticProducts = [
+            {
+                id: 'titan-x-pro',
+                name: 'Titan X Pro',
+                category: 'phone',
+                price: 1299.00,
+                description: 'Unrivaled processing power and camera optics. The future in your hand.',
+                imageUrl: 'https://placehold.co/400x400/1e3a8a/ffffff?text=Titan+X+Pro',
+                videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 
+            },
+            {
+                id: 'modeny-lifestyle',
+                name: 'Modeny Lifestyle AF1',
+                category: 'shoe',
+                price: 180.00,
+                description: 'Hand-stitched leather for sophisticated comfort. Classic style, modern feel.',
+                imageUrl: 'https://placehold.co/400x400/facc15/1e3a8a?text=Modeny+Lifestyle',
+                videoUrl: null,
+            },
+             {
+                id: 'galaxy-s24-concept',
+                name: 'Galaxy S24 Ultra Concept',
+                category: 'phone',
+                price: 1150.00,
+                description: 'AI-enhanced photography and seamless performance. Limited edition design.',
+                imageUrl: 'https://placehold.co/400x400/2563eb/ffffff?text=S24+Concept',
+                videoUrl: null, 
+            },
+            {
+                id: 'phantom-runner',
+                name: 'Phantom Runner V3',
+                category: 'shoe',
+                price: 210.00,
+                description: 'Engineered mesh upper for maximum breathability and speed.',
+                imageUrl: 'https://placehold.co/400x400/4c4c4c/ffffff?text=Runner+V3',
+                videoUrl: null,
             }
-        }
+        ];
 
+        // --- Core Functions ---
 
-        function setupProductListeners() {
-            if (!db) return;
+        // 1. Renders the static products into the DOM
+        function loadStaticProducts() {
+            const phonesContainer = document.getElementById('phones-grid');
+            const shoesContainer = document.getElementById('shoes-grid');
             
-            const q = collection(db, productsCollectionPath);
+            phonesContainer.innerHTML = '';
+            shoesContainer.innerHTML = '';
 
-            onSnapshot(q, (snapshot) => {
-                const phonesContainer = document.getElementById('phones-grid');
-                const shoesContainer = document.getElementById('shoes-grid');
-                
-                phonesContainer.innerHTML = '';
-                shoesContainer.innerHTML = '';
+            staticProducts.forEach((product) => {
+                const cardHtml = createProductCard(product);
 
-                snapshot.forEach((doc) => {
-                    const product = doc.data();
-                    product.id = doc.id;
-                    const cardHtml = createProductCard(product);
-
-                    if (product.category === 'phone') {
-                        phonesContainer.innerHTML += cardHtml;
-                    } else if (product.category === 'shoe') {
-                        shoesContainer.innerHTML += cardHtml;
-                    }
-                });
-                
-                if (phonesContainer.innerHTML === '') {
-                    phonesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No phones currently listed. Use Admin Mode to add one!</p>';
+                if (product.category === 'phone') {
+                    phonesContainer.innerHTML += cardHtml;
+                } else if (product.category === 'shoe') {
+                    shoesContainer.innerHTML += cardHtml;
                 }
-                if (shoesContainer.innerHTML === '') {
-                    shoesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No shoes currently listed. Use Admin Mode to add one!</p>';
-                }
-            }, (error) => {
-                const errorMessage = "Cannot load products. Please check console for permissions errors.";
-                document.getElementById('phones-grid').innerHTML = `<p class="text-center text-red-500 col-span-full py-8">${errorMessage}</p>`;
-                document.getElementById('shoes-grid').innerHTML = `<p class="text-center text-red-500 col-span-full py-8">${errorMessage}</p>`;
-                console.error("Error fetching products:", error);
             });
-        }
-        
-        async function addProduct(productData) {
-            if (!db) return console.error("Database not initialized.");
             
-            try {
-                await addDoc(collection(db, productsCollectionPath), productData); 
-                console.log("Product added successfully:", productData.name);
-                
-                const modal = document.getElementById('admin-modal');
-                modal.classList.add('hidden');
-                document.getElementById('modal-message').textContent = `${productData.name} added!`;
-                document.getElementById('modal-message').classList.remove('hidden', 'bg-red-100', 'text-red-700');
-                document.getElementById('modal-message').classList.add('bg-green-100', 'text-green-700');
-                setTimeout(() => document.getElementById('modal-message').classList.add('hidden'), 3000);
-                
-                document.getElementById('product-form').reset();
-                document.getElementById('productImage').value = ''; 
-                document.getElementById('productImageFile').value = ''; 
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                document.getElementById('modal-message').textContent = `Error adding product: ${e.message}`;
-                document.getElementById('modal-message').classList.remove('hidden', 'bg-green-100', 'text-green-700');
-                document.getElementById('modal-message').classList.add('bg-red-100', 'text-red-700');
+            // Fallback content in case the list is empty
+            if (phonesContainer.innerHTML === '') {
+                phonesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No phones currently listed.</p>';
+            }
+            if (shoesContainer.innerHTML === '') {
+                shoesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No shoes currently listed.</p>';
             }
         }
-        
-        // --- DOM Rendering Functions ---
 
+        // 2. Generates the HTML card for a product
         function createProductCard(product) {
             const buttonColor = product.category === 'phone' ? 'bg-primary hover:bg-blue-700' : 'bg-accent text-gray-900 hover:bg-yellow-500';
             const priceColor = product.category === 'phone' ? 'text-primary' : 'text-primary';
@@ -272,173 +156,116 @@
                 </div>
             `;
         }
-
-        // --- Admin Setup ---
-
-        function setupAdminForm() {
-            const form = document.getElementById('product-form');
-            const fileInput = document.getElementById('productImageFile');
-            const hiddenImageInput = document.getElementById('productImage');
-            const modalMessage = document.getElementById('modal-message');
-            
-            // 1. Image File to Base64 Conversion
-            fileInput.addEventListener('change', () => {
-                hiddenImageInput.value = ''; 
-                modalMessage.classList.add('hidden'); 
-
-                if (fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
-                    
-                    if (file.size > 500 * 1024) { 
-                        modalMessage.textContent = 'Warning: Image is larger than 500KB. This may affect app performance. Saving as Base64 data.';
-                        modalMessage.classList.remove('hidden', 'bg-green-100', 'text-green-700');
-                        modalMessage.classList.add('bg-red-100', 'text-red-700');
-                    }
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        hiddenImageInput.value = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-
-            // 2. Handle form submission
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                let imageSource = hiddenImageInput.value;
-                
-                if (!imageSource) {
-                    imageSource = `https://placehold.co/400x400/${form.productCategory.value === 'phone' ? '1e3a8a' : 'facc15'}/ffffff?text=${form.productName.value.replace(/\s/g, '+')}`;
-                }
-
-                const data = {
-                    name: form.productName.value,
-                    category: form.productCategory.value,
-                    price: parseFloat(form.productPrice.value),
-                    description: form.productDescription.value,
-                    videoUrl: form.productVideo.value || null, 
-                    imageUrl: imageSource, 
-                    createdAt: Date.now()
-                };
-
-                if (isNaN(data.price) || data.name.trim() === '') {
-                    modalMessage.textContent = 'Please check name and price fields.';
-                    modalMessage.classList.remove('hidden', 'bg-green-100', 'text-green-700');
-                    modalMessage.classList.add('bg-red-100', 'text-red-700');
-                    return;
-                }
-
-                addProduct(data);
-            });
-        }
         
-        // --- Password and Modal Logic ---
+        // 3. Updates footer and contact modal links
+        function updateContactDetails() {
+            const emailElement = document.getElementById('footer-email');
+            const whatsappElement = document.getElementById('footer-whatsapp');
 
-        // Open Password Modal
-        document.getElementById('admin-panel-toggle').addEventListener('click', () => {
-            document.getElementById('password-modal').classList.remove('hidden');
-        });
-
-        // Close Password Modal
-        document.getElementById('close-password-modal').addEventListener('click', () => {
-            document.getElementById('password-modal').classList.add('hidden');
-            document.getElementById('password-error').classList.add('hidden');
-            document.getElementById('adminPassword').value = '';
-        });
-
-        // Password Form Submission Check
-        document.getElementById('password-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const enteredPassword = document.getElementById('adminPassword').value;
-            const errorDisplay = document.getElementById('password-error');
-            
-            if (enteredPassword === ADMIN_PASSWORD) {
-                errorDisplay.classList.add('hidden');
-                document.getElementById('password-modal').classList.add('hidden'); // Close password modal
-                document.getElementById('admin-modal').classList.remove('hidden'); // Open product form modal
-                document.getElementById('adminPassword').value = ''; 
-            } else {
-                errorDisplay.classList.remove('hidden');
+            if (emailElement) {
+                emailElement.textContent = CONTACT_EMAIL;
             }
-        });
-
-
-        // Close Admin Product Form Modal
-        document.getElementById('close-modal').addEventListener('click', () => {
-            document.getElementById('admin-modal').classList.add('hidden');
-            // Cleanup state
-            document.getElementById('product-form').reset();
-            document.getElementById('productImage').value = ''; 
-            document.getElementById('productImageFile').value = '';
-            document.getElementById('modal-message').classList.add('hidden'); 
-        });
-
-        // --- Customer Contact Modal Logic (Product Specific) ---
-
-        function openContactModal(productName) {
-            const modal = document.getElementById('contact-modal');
-            document.getElementById('contact-product-name').textContent = productName;
-            
-            const emailSubject = `Inquiry about ${productName}`;
-            const emailBody = `Hello, I am interested in purchasing the ${productName} product advertised on your site. Can you please provide more information?`;
-            
-            // mailto: link for Email 
-            document.getElementById('email-link').href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-            
-            // WhatsApp link 
-            const whatsappMessage = `Hi, I'd like to know more about the ${productName}.`;
-            document.getElementById('whatsapp-link').href = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`;
-            
-            modal.classList.remove('hidden');
+            if (whatsappElement) {
+                whatsappElement.textContent = `+${CONTACT_WHATSAPP}`;
+            }
         }
 
-        document.getElementById('close-contact-modal').addEventListener('click', () => {
-            document.getElementById('contact-modal').classList.add('hidden');
-        });
 
-        function setupContactButtonDelegation() {
+        // 4. Admin Mode / Password Logic (Simplified for Static Host)
+        
+        // Open Password Modal
+        document.addEventListener('DOMContentLoaded', () => {
+             document.getElementById('admin-panel-toggle').addEventListener('click', () => {
+                document.getElementById('password-modal').classList.remove('hidden');
+            });
+
+            // Close Password Modal
+            document.getElementById('close-password-modal').addEventListener('click', () => {
+                document.getElementById('password-modal').classList.add('hidden');
+                document.getElementById('password-error').classList.add('hidden');
+                document.getElementById('adminPassword').value = '';
+            });
+
+            // Password Form Submission Check
+            document.getElementById('password-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const enteredPassword = document.getElementById('adminPassword').value;
+                const errorDisplay = document.getElementById('password-error');
+                
+                if (enteredPassword === ADMIN_PASSWORD) {
+                    errorDisplay.classList.add('hidden');
+                    document.getElementById('password-modal').classList.add('hidden'); // Close password modal
+                    // Instead of opening a functional admin form, show the status message
+                    document.getElementById('static-status-modal').classList.remove('hidden');
+                    document.getElementById('adminPassword').value = ''; 
+                } else {
+                    errorDisplay.classList.remove('hidden');
+                }
+            });
+
+            // Close Static Status Modal
+            document.getElementById('close-static-status-modal').addEventListener('click', () => {
+                document.getElementById('static-status-modal').classList.add('hidden');
+            });
+
+            // 5. Product Specific Customer Contact Modal Logic 
+            function openContactModal(productName) {
+                const modal = document.getElementById('contact-modal');
+                document.getElementById('contact-product-name').textContent = productName;
+                
+                const emailSubject = `Inquiry about ${productName}`;
+                const emailBody = `Hello, I am interested in purchasing the ${productName} product advertised on your site. Can you please provide more information?`;
+                
+                // mailto: link for Email 
+                document.getElementById('email-link').href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+                
+                // WhatsApp link 
+                const whatsappMessage = `Hi, I'd like to know more about the ${productName}.`;
+                document.getElementById('whatsapp-link').href = `https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`;
+                
+                modal.classList.remove('hidden');
+            }
+
+            document.getElementById('close-contact-modal').addEventListener('click', () => {
+                document.getElementById('contact-modal').classList.add('hidden');
+            });
+
+            // Event delegation for all "Contact to Buy" buttons (The items are now showing)
             document.addEventListener('click', (e) => {
                 if (e.target && e.target.classList.contains('contact-button')) {
                     const productName = e.target.dataset.productName;
                     openContactModal(productName);
                 }
             });
-        }
-        
-        // --- General Connect Modal Logic ---
-        
-        function setupConnectModal() {
+
+            // 6. General Connect Modal Logic
             const desktopToggle = document.getElementById('connect-panel-toggle');
             const mobileToggle = document.getElementById('connect-panel-toggle-mobile');
             const connectModal = document.getElementById('general-connect-modal');
 
-            const openModal = () => connectModal.classList.remove('hidden');
+            const openGeneralModal = () => connectModal.classList.remove('hidden');
 
-            // 1. Setup Toggle Listeners
             if (desktopToggle) {
-                desktopToggle.addEventListener('click', openModal);
+                desktopToggle.addEventListener('click', openGeneralModal);
             }
             if (mobileToggle) {
-                mobileToggle.addEventListener('click', openModal);
+                mobileToggle.addEventListener('click', openGeneralModal);
             }
 
-            // 2. Setup Close Listener
             document.getElementById('close-general-connect-modal').addEventListener('click', () => {
                 connectModal.classList.add('hidden');
             });
 
-            // 3. Setup Link URLs (Ensuring correct contact info is used here)
             document.getElementById('general-whatsapp-link').href = `https://wa.me/${CONTACT_WHATSAPP}?text=Hello%2C%20I%20saw%20your%20website%20and%20wanted%20to%20chat!`;
             document.getElementById('general-email-link').href = `mailto:${CONTACT_EMAIL}?subject=General%20Inquiry%20from%20Website`;
             document.getElementById('general-instagram-link').href = INSTAGRAM_LINK;
-        }
 
 
-        // Start the application
-        initializeAppAndAuth();
+            // --- Initialize App ---
+            updateContactDetails();
+            loadStaticProducts(); // Load the hardcoded products now!
+        });
+
     </script>
 
 
@@ -454,7 +281,6 @@
 
             <!-- Admin Panel Toggle and Connect Button -->
             <div class="flex items-center space-x-3 sm:space-x-4">
-                <p id="admin-user-id" class="text-xs text-gray-500 hidden sm:block"></p>
                 
                 <!-- Connect Button (Desktop) -->
                 <button id="connect-panel-toggle" class="bg-whatsapp text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-600 transition duration-300 hidden sm:inline-block">
@@ -498,63 +324,27 @@
     </div>
 
 
-    <!-- Admin Product Form Modal (Hidden by default - Opens after successful password entry) -->
-    <div id="admin-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-lg">
+    <!-- Static Status Modal (Replaces the Admin Product Form) -->
+    <div id="static-status-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-lg text-center">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-2xl font-bold text-primary">Add New Product</h3>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
+                <h3 class="text-2xl font-bold text-red-600">Admin Mode Status</h3>
+                <button id="close-static-status-modal" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
             </div>
             
-            <!-- Success/Error Message -->
-            <p id="modal-message" class="hidden text-center p-2 mb-4 bg-green-100 text-green-700 rounded-lg font-medium"></p>
+            <p class="text-lg text-gray-700 font-semibold mb-4">
+                You have successfully accessed Admin Mode.
+            </p>
 
-            <form id="product-form" class="space-y-4">
-                <div>
-                    <label for="productName" class="block text-sm font-medium text-gray-700">Product Name</label>
-                    <input type="text" id="productName" name="productName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                </div>
-                
-                <div class="flex space-x-4">
-                    <div class="w-1/2">
-                        <label for="productCategory" class="block text-sm font-medium text-gray-700">Category</label>
-                        <select id="productCategory" name="productCategory" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            <option value="phone">Phone</option>
-                            <option value="shoe">Shoe</option>
-                        </select>
-                    </div>
-                    <div class="w-1/2">
-                        <label for="productPrice" class="block text-sm font-medium text-gray-700">Price ($)</label>
-                        <input type="number" step="0.01" id="productPrice" name="productPrice" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    </div>
-                </div>
-
-                <div>
-                    <label for="productDescription" class="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea id="productDescription" name="productDescription" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
-                </div>
-
-                <!-- Image File Selector -->
-                <div> 
-                    <label for="productImageFile" class="block text-sm font-medium text-gray-700">Product Picture (Select Local File)</label>
-                    <input type="file" id="productImageFile" name="productImageFile" accept="image/*" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border p-0 h-10 flex items-center">
-                    <input type="hidden" id="productImage" name="productImage" value=""> 
-                    <p class="text-xs text-gray-500 mt-1">Images are converted to data for display. Keep files under 500KB for best performance.</p>
-                </div>
-
-                <!-- Video URL for demos/reviews (External Link ONLY) -->
-                <div> 
-                    <label for="productVideo" class="block text-sm font-medium text-gray-700">External Video Link (e.g., YouTube, Vimeo URL)</label>
-                    <input type="url" id="productVideo" name="productVideo" placeholder="e.g., https://youtube.com/watch?v=xyz" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                    <p class="text-xs text-gray-500 mt-1 text-red-500 font-semibold">NOTE: Direct video file uploads are not supported due to database size limits (1MB).</p>
-                </div>
-
-                <button type="submit" class="w-full bg-accent text-gray-900 font-bold py-3 rounded-lg hover:bg-yellow-500 transition duration-300">
-                    Save New Item
-                </button>
-            </form>
+            <p class="text-sm text-gray-600 mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                **Note:** Database functionality (adding/editing products) is disabled on this static GitHub Pages version because it lacks the required backend services. Products are currently loaded from a hardcoded list for demonstration purposes.
+            </p>
+            <button id="close-static-status-modal-button" class="bg-primary text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300">
+                Close
+            </button>
         </div>
     </div>
+
 
     <!-- Product Specific Customer Contact Modal (Hidden by default) -->
     <div id="contact-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
@@ -621,7 +411,12 @@
             
             <!-- Hero Image: Sleek Tech and Footwear -->
             <div class="mb-10 max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-2xl">
-                
+                <!-- Placeholder for the main picture requested by the user: iPhone 17, S24, and AF1 shoe -->
+                <img 
+                    src="https://placehold.co/1000x500/1e3a8a/facc15?text=Sleek+Tech+%26+Style+Collection" 
+                    alt="A conceptual image showing a futuristic smartphone and a sleek white sneaker (AF1 style) merged in a minimalist setting."
+                    class="w-full h-auto object-cover"
+                >
             </div>
 
             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black mb-4">
@@ -651,8 +446,7 @@
             
             <!-- Dynamic Product Grid - Content Loaded by JavaScript -->
             <div id="phones-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <!-- Initial loading state -->
-                <p class="text-center text-gray-500 col-span-full py-8">Loading phones...</p>
+                <!-- Products will load here statically -->
             </div>
             
             <div class="text-center mt-12">
@@ -672,8 +466,7 @@
             
             <!-- Dynamic Product Grid - Content Loaded by JavaScript -->
             <div id="shoes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <!-- Initial loading state -->
-                <p class="text-center text-gray-500 col-span-full py-8">Loading footwear...</p>
+                <!-- Products will load here statically -->
             </div>
             
             <div class="text-center mt-12">
