@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Priest Modeny & Techy | Admin Ready</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Font Configuration for Inter */
+        html {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        /* Product Card Hover Effect */
+        .product-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Modal Backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#1e3a8a', /* Deep Blue / Navy */
+                        'accent': '#facc15', /* Gold / Yellow */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Firebase SDK Imports (Required for Database) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, setDoc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, userId = null;
+
+        // Initialize Firebase and Authentication
+        async function initializeAppAndAuth() {
+            try {
+                if (!firebaseConfig) {
+                    console.error("Firebase config not available. Running in local simulation mode.");
+                    return;
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                setLogLevel('Debug'); 
+
+                const adminPanel = document.getElementById('admin-panel-toggle');
+                const adminUserIdDisplay = document.getElementById('admin-user-id');
+
+                // Robust Authentication Setup
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // Authentication is now complete. Set the user ID.
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                adminUserIdDisplay.textContent = `User ID: ${userId}`;
+
+                // Admin check updated to show button for any authenticated user
+                if (initialAuthToken) { 
+                    adminPanel.classList.remove('hidden');
+                    adminUserIdDisplay.textContent += ' (Authenticated Admin)';
+                } else {
+                    adminUserIdDisplay.textContent += ' (Anonymous)';
+                }
+                
+                // Seed and Listener Setup
+                await seedInitialProducts(); 
+                setupProductListeners();
+                setupAdminForm();
+                setupContactButtonDelegation(); // Initialize contact button listeners
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or authentication:", error);
+                document.getElementById('admin-user-id').textContent = `Auth Failed: ${error.message}`;
+            }
+        }
+        
+        // --- Database Logic ---
+        
+        const productsCollectionPath = `artifacts/${appId}/public/data/products`;
+
+        // Function to seed initial products if the collection is empty
+        async function seedInitialProducts() {
+            if (!db) return;
+            const productsRef = collection(db, productsCollectionPath);
+            
+            try {
+                const snapshot = await getDocs(productsRef); 
+                
+                if (snapshot.empty) {
+                    console.log("Database is empty. Seeding initial products.");
+                    
+                    const initialProducts = [
+                        {
+                            id: 'titan-x-pro',
+                            name: 'Titan X Pro',
+                            category: 'phone',
+                            price: 1299.00,
+                            description: 'Unrivaled processing power and camera optics.',
+                            imageUrl: 'https://placehold.co/400x400/1e3a8a/ffffff?text=Titan+X+Pro',
+                            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Placeholder video URL
+                            createdAt: Date.now() - 10000
+                        },
+                        {
+                            id: 'modeny-lifestyle',
+                            name: 'Modeny Lifestyle',
+                            category: 'shoe',
+                            price: 180.00,
+                            description: 'Hand-stitched leather for sophisticated comfort.',
+                            imageUrl: 'https://placehold.co/400x400/facc15/1e3a8a?text=Modeny+Lifestyle',
+                            videoUrl: null,
+                            createdAt: Date.now() - 5000
+                        }
+                    ];
+                    
+                    for (const product of initialProducts) {
+                        await setDoc(doc(db, productsCollectionPath, product.id), product);
+                    }
+                    console.log("Initial products seeded.");
+                } else {
+                    console.log("Database already contains products. Skipping seed.");
+                }
+            } catch (e) {
+                console.warn("Could not check if database is empty (Possible permission error on read check, but proceeding):", e.message);
+            }
+        }
+
+
+        function setupProductListeners() {
+            if (!db) return;
+            
+            const q = collection(db, productsCollectionPath);
+
+            onSnapshot(q, (snapshot) => {
+                const phonesContainer = document.getElementById('phones-grid');
+                const shoesContainer = document.getElementById('shoes-grid');
+                
+                phonesContainer.innerHTML = '';
+                shoesContainer.innerHTML = '';
+
+                snapshot.forEach((doc) => {
+                    const product = doc.data();
+                    product.id = doc.id;
+                    const cardHtml = createProductCard(product);
+
+                    if (product.category === 'phone') {
+                        phonesContainer.innerHTML += cardHtml;
+                    } else if (product.category === 'shoe') {
+                        shoesContainer.innerHTML += cardHtml;
+                    }
+                });
+                
+                // If no products, display a message
+                if (phonesContainer.innerHTML === '') {
+                    phonesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No phones currently listed. Use Admin Mode to add one!</p>';
+                }
+                if (shoesContainer.innerHTML === '') {
+                    shoesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">No shoes currently listed. Use Admin Mode to add one!</p>';
+                }
+            }, (error) => {
+                const errorMessage = "Cannot load products. Please check console for permissions errors.";
+                document.getElementById('phones-grid').innerHTML = `<p class="text-center text-red-500 col-span-full py-8">${errorMessage}</p>`;
+                document.getElementById('shoes-grid').innerHTML = `<p class="text-center text-red-500 col-span-full py-8">${errorMessage}</p>`;
+                console.error("Error fetching products:", error);
+            });
+        }
+        
+        async function addProduct(productData) {
+            if (!db) return console.error("Database not initialized.");
+            
+            try {
+                // In a real app, this would be secured by Firestore rules
+                await addDoc(collection(db, productsCollectionPath), productData); 
+                console.log("Product added successfully:", productData.name);
+                
+                // Close modal and show success (using a simple visual change instead of alert)
+                const modal = document.getElementById('admin-modal');
+                modal.classList.add('hidden');
+                document.getElementById('modal-message').textContent = `${productData.name} added!`;
+                document.getElementById('modal-message').classList.remove('hidden', 'bg-red-100', 'text-red-700');
+                document.getElementById('modal-message').classList.add('bg-green-100', 'text-green-700');
+                setTimeout(() => document.getElementById('modal-message').classList.add('hidden'), 3000);
+                
+                // Reset form fields
+                document.getElementById('product-form').reset();
+                document.getElementById('productImage').value = ''; 
+                document.getElementById('productImageFile').value = ''; // Clear file input visual
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                document.getElementById('modal-message').textContent = `Error adding product: ${e.message}`;
+                document.getElementById('modal-message').classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                document.getElementById('modal-message').classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+        
+        // --- DOM Rendering Functions ---
+
+        function createProductCard(product) {
+            // Uses Gold for accent in shoes and Navy for phones
+            const buttonColor = product.category === 'phone' ? 'bg-primary hover:bg-blue-700' : 'bg-accent text-gray-900 hover:bg-yellow-500';
+            const priceColor = product.category === 'phone' ? 'text-primary' : 'text-primary';
+
+            // Check if a video URL exists and is valid
+            const videoLinkHtml = product.videoUrl ? 
+                `<a href="${product.videoUrl}" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-500 mb-2 flex items-center hover:text-red-600 transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M21 4H3a1 1 0 00-1 1v14a1 1 0 001 1h18a1 1 0 001-1V5a1 1 0 00-1-1zm-1 14H4V6h16v12zm-8-3l4-3-4-3v6z"/></svg> 
+                    Video Preview Available
+                </a>` : '';
+
+            return `
+                <!-- Product Card: ${product.name} -->
+                <div class="product-card bg-white p-6 rounded-xl shadow-lg border border-gray-100 flex flex-col items-center">
+                    <!-- Video Indicator: Now a clickable link -->
+                    ${videoLinkHtml}
+                    <img src="${product.imageUrl || 'https://placehold.co/400x400/94a3b8/ffffff?text=Image+Missing'}" alt="${product.name}" class="w-full h-auto rounded-lg mb-4 object-cover aspect-square">
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">${product.name}</h3>
+                    <p class="text-sm text-gray-500 text-center mb-4 flex-grow">${product.description}</p>
+                    <div class="flex justify-between items-center w-full mt-4">
+                        <span class="text-2xl font-black ${priceColor}">$${product.price.toFixed(2)}</span>
+                        <!-- Updated button to trigger contact modal -->
+                        <button 
+                            class="contact-button ${buttonColor} text-white text-sm font-semibold py-2 px-4 rounded-full transition"
+                            data-product-name="${product.name}"
+                        >
+                            Contact to Buy
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Admin Setup ---
+
+        function setupAdminForm() {
+            const form = document.getElementById('product-form');
+            const fileInput = document.getElementById('productImageFile');
+            const hiddenImageInput = document.getElementById('productImage');
+            const modalMessage = document.getElementById('modal-message');
+            
+            // 1. Listen for file selection and convert to Base64 Data URL
+            fileInput.addEventListener('change', () => {
+                hiddenImageInput.value = ''; // Reset hidden value
+                modalMessage.classList.add('hidden'); // Clear previous warnings
+
+                if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    
+                    // Display size warning if too large (critical for base64 storage)
+                    if (file.size > 500 * 1024) { // Warning limit set lower at 500KB
+                        modalMessage.textContent = 'Warning: Image is larger than 500KB. This may affect app performance. Saving as Base64 data.';
+                        modalMessage.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                        modalMessage.classList.add('bg-red-100', 'text-red-700');
+                        // Continue to read the file, but warn the user.
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        // Store Base64 data in the hidden input field
+                        hiddenImageInput.value = e.target.result;
+                    };
+                    // Read file as Base64 data URL
+                    reader.readAsDataURL(file);
+                }
+            });
+
+
+            // 2. Handle form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                let imageSource = hiddenImageInput.value;
+                
+                // If no file was selected, use the default placeholder logic
+                if (!imageSource) {
+                    imageSource = `https://placehold.co/400x400/${form.productCategory.value === 'phone' ? '1e3a8a' : 'facc15'}/ffffff?text=${form.productName.value.replace(/\s/g, '+')}`;
+                }
+
+                const data = {
+                    name: form.productName.value,
+                    category: form.productCategory.value,
+                    price: parseFloat(form.productPrice.value),
+                    description: form.productDescription.value,
+                    // Video URL MUST be an external link, not a file upload
+                    videoUrl: form.productVideo.value || null, 
+                    imageUrl: imageSource, // Holds Base64 data or a placeholder URL
+                    createdAt: Date.now()
+                };
+
+                // Basic validation
+                if (isNaN(data.price) || data.name.trim() === '') {
+                    modalMessage.textContent = 'Please check name and price fields.';
+                    modalMessage.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                    modalMessage.classList.add('bg-red-100', 'text-red-700');
+                    return;
+                }
+
+                addProduct(data);
+            });
+        }
+        
+        // Modal toggling
+        document.getElementById('admin-panel-toggle').addEventListener('click', () => {
+            document.getElementById('admin-modal').classList.remove('hidden');
+        });
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('admin-modal').classList.add('hidden');
+            document.getElementById('product-form').reset();
+            document.getElementById('productImage').value = ''; 
+            document.getElementById('productImageFile').value = '';
+            document.getElementById('modal-message').classList.add('hidden'); 
+        });
+
+        // --- Customer Contact Modal Logic ---
+
+        function openContactModal(productName) {
+            const modal = document.getElementById('contact-modal');
+            document.getElementById('contact-product-name').textContent = productName;
+            
+            // Set up links with pre-filled content
+            const emailSubject = `Inquiry about ${productName}`;
+            const emailBody = `Hello, I am interested in purchasing the ${productName} product advertised on your site. Can you please provide more information?`;
+            
+            // mailto: link for Email
+            document.getElementById('email-link').href = `mailto:sales@pmandtechy.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            // WhatsApp link (using a placeholder number)
+            const whatsappMessage = `Hi, I'd like to know more about the ${productName}.`;
+            document.getElementById('whatsapp-link').href = `https://wa.me/15551234567?text=${encodeURIComponent(whatsappMessage)}`;
+            
+            modal.classList.remove('hidden');
+        }
+
+        document.getElementById('close-contact-modal').addEventListener('click', () => {
+            document.getElementById('contact-modal').classList.add('hidden');
+        });
+
+        // Event delegation for the new 'Contact to Buy' buttons
+        function setupContactButtonDelegation() {
+            document.addEventListener('click', (e) => {
+                if (e.target && e.target.classList.contains('contact-button')) {
+                    const productName = e.target.dataset.productName;
+                    openContactModal(productName);
+                }
+            });
+        }
+
+        // Start the application
+        initializeAppAndAuth();
+    </script>
+
+
+    <!-- Header & Navigation -->
+    <header class="sticky top-0 z-50 bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <!-- Logo & Brand Name -->
+            <a href="#" class="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center">
+                <span class="text-primary mr-2">P M</span>
+                <span class="text-accent text-4xl leading-none font-serif">&</span>
+                <span class="ml-2 text-primary">Techy</span>
+            </a>
+
+            <!-- Admin Panel Toggle (Initially Hidden) -->
+            <div class="flex items-center space-x-4">
+                <p id="admin-user-id" class="text-xs text-gray-500"></p>
+                <button id="admin-panel-toggle" class="hidden bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-300">
+                    + Admin Mode
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Admin Product Modal (Hidden by default) -->
+    <div id="admin-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-lg">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-primary">Add New Product</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
+            </div>
+            
+            <!-- Success/Error Message -->
+            <p id="modal-message" class="hidden text-center p-2 mb-4 bg-green-100 text-green-700 rounded-lg font-medium"></p>
+
+            <form id="product-form" class="space-y-4">
+                <div>
+                    <label for="productName" class="block text-sm font-medium text-gray-700">Product Name</label>
+                    <input type="text" id="productName" name="productName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                </div>
+                
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label for="productCategory" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="productCategory" name="productCategory" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            <option value="phone">Phone</option>
+                            <option value="shoe">Shoe</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label for="productPrice" class="block text-sm font-medium text-gray-700">Price ($)</label>
+                        <input type="number" step="0.01" id="productPrice" name="productPrice" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="productDescription" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="productDescription" name="productDescription" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
+                </div>
+
+                <!-- Image File Selector -->
+                <div> 
+                    <label for="productImageFile" class="block text-sm font-medium text-gray-700">Product Picture (Select Local File)</label>
+                    <input type="file" id="productImageFile" name="productImageFile" accept="image/*" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border p-0 h-10 flex items-center">
+                    <input type="hidden" id="productImage" name="productImage" value=""> 
+                    <p class="text-xs text-gray-500 mt-1">Images are converted to data for display. Keep files under 500KB for best performance.</p>
+                </div>
+
+                <!-- Video URL for demos/reviews (External Link ONLY) -->
+                <div> 
+                    <label for="productVideo" class="block text-sm font-medium text-gray-700">External Video Link (e.g., YouTube, Vimeo URL)</label>
+                    <input type="url" id="productVideo" name="productVideo" placeholder="e.g., https://youtube.com/watch?v=xyz" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <p class="text-xs text-gray-500 mt-1 text-red-500 font-semibold">NOTE: Direct video file uploads are not supported due to database size limits (1MB).</p>
+                </div>
+                <!-- END VIDEO FIELD -->
+
+                <button type="submit" class="w-full bg-accent text-gray-900 font-bold py-3 rounded-lg hover:bg-yellow-500 transition duration-300">
+                    Save New Item
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Contact Modal (Hidden by default) -->
+    <div id="contact-modal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-primary">Contact Us About <span id="contact-product-name" class="text-accent">Product</span></h3>
+                <button id="close-contact-modal" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
+            </div>
+            <p class="text-gray-600 mb-6 text-center">How would you like to reach our sales team?</p>
+
+            <div class="space-y-4">
+                <a id="whatsapp-link" target="_blank" class="flex items-center justify-center space-x-3 bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300">
+                    <!-- WhatsApp Icon (Inline SVG) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.55 0-10.04 4.5-10.04 10.04s4.5 10.04 10.04 10.04h.04c1.61 0 3.1-.38 4.45-1.11l3.52 1.14-1.15-3.4c.78-1.35 1.2-2.91 1.2-4.54 0-5.55-4.48-10.04-10.04-10.04zm.02 1.8c4.66 0 8.46 3.79 8.46 8.46 0 1.45-.37 2.8-1.01 4.02l-.3.57 1.15 3.33-3.41-1.11-.53-.29c-1.16.63-2.52.98-3.96.98-4.66 0-8.46-3.79-8.46-8.46s3.79-8.46 8.46-8.46zm-2.54 2.87c.18 0 .37 0 .55.02s.53.07.72.13c.2.06.43.16.68.32.25.16.47.4.67.72.21.32.33.72.45 1.27.11.55.08 1.09-.08 1.63-.16.54-.45 1.03-.86 1.48-.41.45-.94.75-1.57.92-.64.17-1.32.22-2.0.18-.68-.04-1.3-.23-1.85-.56-.55-.33-.99-.8-1.34-1.39-.35-.59-.56-1.3-.58-2.02-.02-.72.2-1.39.67-1.92.47-.53 1.11-.84 1.83-.93.72-.09 1.41.02 2.07.35z"/></svg>
+                    <span>Chat on WhatsApp</span>
+                </a>
+                <a id="email-link" class="flex items-center justify-center space-x-3 bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+                    <!-- Email Icon (Inline SVG) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M2.003 5.884L10 9.882l-8 4v-8.001zm0 12.112l8-4v8.001l-8-4.001zm20-12.111v12.002l-8-4.001 8-4.001zm-10 4l-10-5h20l-10 5z"/></svg>
+                    <span>Send an Email</span>
+                </a>
+            </div>
+            <p class="text-xs text-center text-gray-400 mt-4">We aim to respond within 1 business hour. (Example contact details: sales@pmandtechy.com / +1-555-123-4567)</p>
+        </div>
+    </div>
+
+
+    <!-- Hero Section -->
+    <section class="bg-primary pt-16 pb-24 text-white text-center shadow-2xl">
+        <div class="max-w-4xl mx-auto px-4">
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black mb-4">
+                <span class="text-accent block">Priest Modeny & Techy</span>
+                Where Style Meets Performance.
+            </h1>
+            <p class="text-lg mb-8 font-light max-w-2xl mx-auto">
+                Curated electronics and elite footwear. Experience the premium difference in every step and every swipe.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#phones" class="bg-accent text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-yellow-500 transition duration-300 transform hover:scale-105">
+                    Explore Tech
+                </a>
+                <a href="#shoes" class="bg-white text-primary font-bold py-3 px-8 rounded-full shadow-lg border-2 border-primary hover:bg-gray-200 transition duration-300 transform hover:scale-105">
+                    Discover Footwear
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Phones Section -->
+    <section id="phones" class="py-16 sm:py-24">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-extrabold text-primary text-center mb-12 border-b-4 border-accent inline-block pb-1">
+                Cutting-Edge Smartphones & Accessories
+            </h2>
+            
+            <!-- Dynamic Product Grid - Content Loaded by JavaScript -->
+            <div id="phones-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Initial loading state -->
+                <p class="text-center text-gray-500 col-span-full py-8">Loading phones...</p>
+            </div>
+            
+            <div class="text-center mt-12">
+                <a href="#" class="inline-block bg-primary text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                    See All Electronics
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Shoes Section -->
+    <section id="shoes" class="bg-gray-100 py-16 sm:py-24">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-extrabold text-gray-900 text-center mb-12 border-b-4 border-primary inline-block pb-1">
+                Elite Footwear Collection
+            </h2>
+            
+            <!-- Dynamic Product Grid - Content Loaded by JavaScript -->
+            <div id="shoes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Initial loading state -->
+                <p class="text-center text-gray-500 col-span-full py-8">Loading footwear...</p>
+            </div>
+            
+            <div class="text-center mt-12">
+                <a href="#" class="inline-block bg-accent text-gray-900 font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-yellow-500 transition duration-300 transform hover:scale-105">
+                    View All Footwear
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action / About Section -->
+    <section id="about" class="py-16 bg-white shadow-inner">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h3 class="text-3xl font-bold text-primary mb-4">
+                The Story Behind the Name
+            </h3>
+            <p class="text-gray-600 mb-8 max-w-2xl mx-auto">
+                **Priest Modeny & Techy** was founded on the idea that quality should extend from your personal style to your digital world. We select only the most reliable phones and the most stylish, performance-driven shoes. Join our community for exclusive early access to drops.
+            </p>
+            <form class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <input 
+                    type="email" 
+                    placeholder="Join the PM&T Newsletter" 
+                    class="p-3 w-full sm:w-80 border-2 border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition duration-300" 
+                    required
+                >
+                <button 
+                    type="submit" 
+                    class="bg-primary text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300"
+                >
+                    Subscribe
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Column 1: Logo & Mission -->
+                <div>
+                    <a href="#" class="text-2xl font-extrabold text-accent mb-4 block">PM&T</a>
+                    <p class="text-sm text-gray-400">
+                        Blending modern elegance with cutting-edge technology since 2025.
+                    </p>
+                </div>
+                
+                <!-- Column 2: Quick Links -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-4 text-white">Products</h4>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#phones" class="hover:text-accent transition duration-150">Premium Smartphones</a></li>
+                        <li><a href="#shoes" class="hover:text-accent transition duration-150">Performance Footwear</a></li>
+                        <li><a href="#" class="hover:text-accent transition duration-150">New Arrivals</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: Customer Service -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-4 text-white">Support</h4>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-accent transition duration-150">Shipping Policy</a></li>
+                        <li><a href="#" class="hover:text-accent transition duration-150">Contact</a></li>
+                        <li><a href="#" class="hover:text-accent transition duration-150">Privacy</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: Contact -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-4 text-white">Get in Touch</h4>
+                    <p class="text-sm text-gray-400">
+                        Email: support@pmandtechy.com<br>
+                        Phone: (555) MODENY-1<br>
+                        Follow Us: @PMandTechy
+                    </p>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div class="mt-12 pt-8 border-t border-gray-700 text-center text-sm text-gray-500">
+                &copy; 2025 Priest Modeny & Techy.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
